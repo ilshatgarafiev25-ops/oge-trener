@@ -325,7 +325,8 @@ async function upsertQuestion(q) {
   return !error ? null : error;
 }
 async function deleteQuestionRow(id) {
-  await sb.from("questions").delete().eq("id", id);
+  const { error } = await sb.from("questions").delete().eq("id", id);
+  return error || null;
 }
 async function uploadQuestionImage(file, filename) {
   const blob = await compressImageToBlob(file);
@@ -822,6 +823,7 @@ function BankTab({ bank, onReload }) {
       correctMatch: q.correctMatch && q.correctMatch.length ? [...q.correctMatch] : ["", ""]
     });
     setEditingId(q.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function cancelEdit() {
     setDraft(emptyDraft());
@@ -830,7 +832,11 @@ function BankTab({ bank, onReload }) {
     setError("");
   }
   async function removeFromBank(id) {
-    await deleteQuestionRow(id);
+    const err = await deleteQuestionRow(id);
+    if (err) {
+      setError("Не удалось удалить задание в Supabase: " + err.message + ". Возможно, не хватает политики RLS на удаление в таблице questions (см. fix storage/tests policy scripts).");
+      return;
+    }
     if (id === editingId) cancelEdit();
     onReload();
   }
